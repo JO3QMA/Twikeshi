@@ -38,20 +38,36 @@ def load_json
   json_data
 end
 test = load_json
+p load_json.count
 id_array = []
+deny_array = []
 test.each do |i|
-  if option['RT'] < i['tweet']['retweet_count'].to_i
-    
-  elsif option['Fav'] < i['tweet']['favorite_count'].to_i
+  if i['tweet']['retweet_count'].to_i > option['RT']
+    deny_array.push i['tweet']['id']
 
+  elsif i['tweet']['favorite_count'].to_i > option['Fav']
+    deny_array.push i['tweet']['id']
+
+  elsif !i['tweet']['entities']['hashtags'].empty?
+    responce = false
+    i['tweet']['entities']['hashtags'].each do |hashtag_hash|
+      if hashtag_hash['text'] == option['Hashtag']
+#        puts "あったよ"
+        deny_array.push i['tweet']['id']
+        break
+      else
+        id_array.push i['tweet']['id']
+      end
+    end
   else
     id_array.push i['tweet']['id']
   end
 end
 
-pp id_array
 p id_array.count
+pp deny_array
 
+p deny_array.count
 client = Twitter::REST::Client.new do |config|
   config.consumer_key        = api['API_Key']
   config.consumer_secret     = api['API_Secret_Key']
@@ -62,7 +78,6 @@ end
 def destroy(array)
   array.each do |tweet_id|
     client.destroy(tweet_id)
-
   end
 end
 destroy(id_array)
