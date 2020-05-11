@@ -44,20 +44,22 @@ deny_array = []
 test.each do |i|
   if i['tweet']['retweet_count'].to_i > option['RT']
     deny_array.push i['tweet']['id']
-
   elsif i['tweet']['favorite_count'].to_i > option['Fav']
     deny_array.push i['tweet']['id']
-
   elsif !i['tweet']['entities']['hashtags'].empty?
-    responce = false
+    found = false
     i['tweet']['entities']['hashtags'].each do |hashtag_hash|
       if hashtag_hash['text'] == option['Hashtag']
-#        puts "あったよ"
-        deny_array.push i['tweet']['id']
+        found = true
         break
       else
-        id_array.push i['tweet']['id']
+        found = false
       end
+    end
+    if found == true
+      deny_array.push i['tweet']['id']
+    else
+      id_array.push i['tweet']['id']
     end
   else
     id_array.push i['tweet']['id']
@@ -80,4 +82,4 @@ def destroy(array)
     client.destroy(tweet_id)
   end
 end
-destroy(id_array)
+#destroy(id_array)
