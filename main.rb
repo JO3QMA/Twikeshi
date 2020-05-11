@@ -6,6 +6,7 @@ require 'fileutils'
 require 'twitter'
 require 'pp'
 require 'yaml'
+require 'date'
 
 # コマンドオプション
 # -h ハッシュタグ  : ハッシュタグを含むツイートを除く
@@ -42,13 +43,17 @@ p load_json.count
 id_array = []
 deny_array = []
 test.each do |i|
-  if i['tweet']['retweet_count'].to_i > option['RT']
+  retweet = i['tweet']['retweet_count'].to_i
+  favorite = i['tweet']['favorite_count'].to_i
+  hashtags = i['tweet']['entities']['hashtags']
+  created_at = Date.strptime(i['tweet']['created_at'] ,"%a %b %d %T %z %Y")
+  if retweet > option['RT']
     deny_array.push i['tweet']['id']
-  elsif i['tweet']['favorite_count'].to_i > option['Fav']
+  elsif favorite > option['Fav']
     deny_array.push i['tweet']['id']
-  elsif !i['tweet']['entities']['hashtags'].empty?
+  elsif hashtags.empty?
     found = false
-    i['tweet']['entities']['hashtags'].each do |hashtag_hash|
+    hashtags.each do |hashtag_hash|
       if hashtag_hash['text'] == option['Hashtag']
         found = true
         break
@@ -61,6 +66,10 @@ test.each do |i|
     else
       id_array.push i['tweet']['id']
     end
+  elsif created_at < option['until']
+    deny_array.push i['tweet']['id']
+  elsif created_at > option['since']
+    deny_array.push i['tweet']['id']
   else
     id_array.push i['tweet']['id']
   end

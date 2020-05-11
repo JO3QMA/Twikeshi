@@ -3,9 +3,16 @@ api:
   API_Secret_Key: ""
   Access_Token: ""
   Access_Token_Secret: ""
+
+# オプション
 option:
+  # 指定した数値以上RTされている場合除外
   RT: 1
+  # 指定した数値以上Favられている場合除外
   Fav: 1
-  since_time: ""
-  max_time: ""
+  # 指定した時間までのツイートは除外
+  until: ""
+  # 指定した時間より後のツイートは除外
+  since: ""
+  # 指定したハッシュタグを含む場合除外
   hashtag: ""
