@@ -5,7 +5,17 @@ require 'json'
 require 'fileutils'
 require 'twitter'
 require 'pp'
+require 'yaml'
 
+# コマンドオプション
+# -h ハッシュタグ  : ハッシュタグを含むツイートを除く
+# -r リツイート    : 指定した数値以上のRTされたツイートを除く
+# -f ふぁぼ       :　指定した数値以上のFavされたツイートを除く
+# -t 時間         : 指定した時間以後のツイートを除く
+
+config = YAML.load_file('./config.yml')
+api = config['api']
+option = config['option']
 dest = 'tmp/'
 def unzip(file = 'twitter.zip')
   Zip::File.open(file) do |zip|
@@ -30,14 +40,18 @@ end
 test = load_json
 id_array = []
 test.each do |i|
-  pp i['tweet']['id']
-  id_array.push i['tweet']['id']
+  if option['RT'] < i['tweet']['retweet_count'].to_i
+    
+  elsif option['Fav'] < i['tweet']['favorite_count'].to_i
+
+  else
+    id_array.push i['tweet']['id']
+  end
 end
 
 pp id_array
 p id_array.count
-config = YAML.load_file('./config.yml')
-api = config['account']
+
 client = Twitter::REST::Client.new do |config|
   config.consumer_key        = api['API_Key']
   config.consumer_secret     = api['API_Secret_Key']
