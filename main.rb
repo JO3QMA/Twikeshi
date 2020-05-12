@@ -17,8 +17,9 @@ require 'date'
 config = YAML.load_file('./config.yml')
 api = config['api']
 option = config['option']
-dest = 'tmp/'
 def unzip(file = 'twitter.zip')
+  
+dest = 'tmp/'
   Zip::File.open(file) do |zip|
     zip.each do |entry|
       p entry.name
@@ -31,6 +32,15 @@ def delete_tmp(dir = 'tmp/')
   FileUtils.rm_r(dir)
 end
 
+def reformat_json
+  file = File.open('tmp/data/tweet.js', 'r')
+  buffer = file.read
+  buffer.gsub!('window.YTD.tweet.part0 = [ {', '[ {')
+  file = File.open('tmp/data/tweet.js', 'w')
+  file.write(buffer)
+  file.close
+end
+
 def load_json
   tweet_json = 'tmp/data/tweet.js'
   json_data = open(tweet_json) do |io|
@@ -38,6 +48,8 @@ def load_json
   end
   json_data
 end
+unzip
+reformat_json
 test = load_json
 p load_json.count
 id_array = []
@@ -46,12 +58,12 @@ test.each do |i|
   retweet = i['tweet']['retweet_count'].to_i
   favorite = i['tweet']['favorite_count'].to_i
   hashtags = i['tweet']['entities']['hashtags']
-  created_at = Date.strptime(i['tweet']['created_at'] ,"%a %b %d %T %z %Y")
-  if retweet > option['RT']
+  created_at = Date.strptime(i['tweet']['created_at'], '%a %b %d %T %z %Y')
+  if !option['RT'] == -1 && retweet > option['RT']
     deny_array.push i['tweet']['id']
-  elsif favorite > option['Fav']
+  elsif !option['Fav'] == -1 && favorite > option['Fav']
     deny_array.push i['tweet']['id']
-  elsif hashtags.empty?
+  elsif !option['Hashtag'].empty? && hashtags.empty?
     found = false
     hashtags.each do |hashtag_hash|
       if hashtag_hash['text'] == option['Hashtag']
@@ -66,9 +78,9 @@ test.each do |i|
     else
       id_array.push i['tweet']['id']
     end
-  elsif created_at < option['until']
+  elsif !option['Until'].empty? && created_at < option['Until'] 
     deny_array.push i['tweet']['id']
-  elsif created_at > option['since']
+  elsif !option['Since'].empty? && created_at > option['Since']
     deny_array.push i['tweet']['id']
   else
     id_array.push i['tweet']['id']
@@ -91,4 +103,4 @@ def destroy(array)
     client.destroy(tweet_id)
   end
 end
-#destroy(id_array)
+ destroy(id_array)
