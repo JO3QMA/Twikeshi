@@ -89,7 +89,6 @@ end
 
 p id_array.count
 pp deny_array
-
 p deny_array.count
 client = Twitter::REST::Client.new do |config|
   config.consumer_key        = api['API_Key']
@@ -99,8 +98,22 @@ client = Twitter::REST::Client.new do |config|
 end
 
 def destroy(array)
+  count = 0
   array.each do |tweet_id|
+    count += 1
     client.destroy(tweet_id)
+    progress(count)
   end
 end
+
+def progress(count)
+  count -= 1
+  percent = count / load_json.count.to_f * 100
+  scale = 2
+  bar = percent / scale
+  hide_bar = 100 / scale - bar.floor
+  print "\r#{count}件目 [#{'=' * bar}#{' ' * hide_bar}] #{percent.floor(1)}%完了"
+  puts '' if count == load_json.count
+end
  destroy(id_array)
+ delete_tmp
