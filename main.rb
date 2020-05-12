@@ -58,7 +58,13 @@ test.each do |i|
   retweet = i['tweet']['retweet_count'].to_i
   favorite = i['tweet']['favorite_count'].to_i
   hashtags = i['tweet']['entities']['hashtags']
-  created_at = Date.strptime(i['tweet']['created_at'], '%a %b %d %T %z %Y')
+  created_at = Date.parse(i['tweet']['created_at'])
+  if !option['Until'].empty?
+    until_time = Date.parse(option['Until'])
+  end
+  if !option['Since'].empty?
+    since_time = Date.parse(option['Since'])
+  end
   if !option['RT'] == -1 && retweet > option['RT']
     deny_array.push i['tweet']['id']
   elsif !option['Fav'] == -1 && favorite > option['Fav']
@@ -78,9 +84,9 @@ test.each do |i|
     else
       id_array.push i['tweet']['id']
     end
-  elsif !option['Until'].empty? && created_at < option['Until'] 
+  elsif !option['Until'].empty? && created_at < until_time
     deny_array.push i['tweet']['id']
-  elsif !option['Since'].empty? && created_at > option['Since']
+  elsif !option['Since'].empty? && created_at > since_time
     deny_array.push i['tweet']['id']
   else
     id_array.push i['tweet']['id']
