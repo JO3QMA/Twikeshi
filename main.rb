@@ -1,17 +1,13 @@
 # frozen_string_literal: true
 
-# TODO
-#  削除処理実際に動かないと思うのでそれの対処
-#  exe化
-
 require 'zip'
 require 'json'
 require 'fileutils'
 require 'twitter'
-require 'pp'
 require 'yaml'
 require 'date'
 
+# 全部の処理
 class TweetDeleter
   def initialize
     puts '初期処理をしています。'
@@ -19,24 +15,25 @@ class TweetDeleter
     yaml_file = YAML.load_file('./config.yml')
     api = yaml_file['api']
     @option = yaml_file['option']
-    @until_time = Date.parse(@option['Until']) unless @option['Until'].empty?
-    @since_time = Date.parse(@option['Since']) unless @option['Since'].empty?
+    @until_time = Date.parse(@option['Until']) unless @option['Until'].empty? # 先に日付周りは整形しておく
+    @since_time = Date.parse(@option['Since']) unless @option['Since'].empty? # 先に日付周りは整形しておく
     @client = Twitter::REST::Client.new do |config|
       config.consumer_key        = api['API_Key']
       config.consumer_secret     = api['API_Secret_Key']
       config.access_token        = api['Access_Token']
       config.access_token_secret = api['Access_Token_Secret']
     end
-    @allow_array = []
-    @deny_array = []
+    @allow_array = [] # 削除するツイートIDが入った配列
+    @deny_array = []  # 削除しないツイートIDが入った配列 (デバッグ用なので必要ない)
     puts '初期処理を完了しました。'
   end
 
   def unzip(file)
     puts "#{file}を展開しています。"
-    FileUtils.mkdir_p('./tmp/data')
+    FileUtils.mkdir_p('./tmp/data') # 先にフォルダーを作っておかないと中身を展開できなくて死ぬ
     Zip::File.open(file) do |zip|
       zip.each do |entry|
+        # 全部展開するよりも、必要なものを抽出するほうが実行時間が短い
         if entry.name == 'data/tweet.js'
           zip.extract(entry, @tmp_dir + entry.name) { true }
         end
@@ -49,8 +46,9 @@ class TweetDeleter
     puts 'tweet.jsからJSONを生成しています。'
     file = File.open(@tmp_dir + 'data/tweet.js', 'r')
     buffer = file.read
+    # JSONにするときに必要ではないゴミを消す。
     buffer.gsub!('window.YTD.tweet.part0 = [ {', '[ {')
-    file = File.open(@tmp_dir + 'data/tweet.js', 'w')
+    file = File.open(@tmp_dir + 'data/tweet.json', 'w')
     file.write(buffer)
     file.close
     puts 'JSONの生成が完了しました。'
@@ -58,11 +56,11 @@ class TweetDeleter
 
   def load_json
     puts 'JSONのロードを開始しています。'
-    file = open(@tmp_dir + 'data/tweet.js') do |io|
+    file = open(@tmp_dir + 'data/tweet.json') do |io|
       JSON.load(io)
     end
     puts 'JSONのロードを完了しました。'
-    puts "#{file.count}件のツイートを読み込み終わりました。"
+    puts "#{file.count}件のツイートを読み込みました。"
     file
   end
 
@@ -84,23 +82,20 @@ class TweetDeleter
       elsif !@option['Hashtag'].empty? && !hashtags.empty?
         hit = false
         hashtags.each do |hashtag|
-          if hashtag['text'] == @option['Hashtag']
-            hit = true
-          end
+          hit = true if hashtag['text'] == @option['Hashtag']
         end
         if hit == true
           deny_pusher(tweet)
         else
-          allow_pusher(tweet) # ここがおかしい。ハッシュタグ含んでいて条件に引っかからなかったら問答無用で消されるのはおかしい
+          allow_pusher(tweet) # ハッシュタグ含んでいて条件に引っかからなかったら問答無用で消されるのはおかしい
         end
       else
         allow_pusher(tweet)
       end
     end
     puts 'ツイートの検索を終了しました。'
-    puts "検索件数: #{tweets.count}件"
-    puts "除外件数: #{@deny_array.count}件"
-    puts "削除件数: #{@allow_array.count}件"
+    puts "除外: #{@deny_array.count}件"
+    puts "削除: #{@allow_array.count}件"
   end
 
   def allow_pusher(tweet)
@@ -112,49 +107,60 @@ class TweetDeleter
   end
 
   def delete_tweets
+    puts '削除処理を開始しました。'
+    # 削除するときに配列で渡したほうが絶対に効率がいいけど、
+    # 削除できないツイート(すでに存在しなかったり)があるとエラー吐いて死ぬため、一つずつ叩くようにする。
     count = 0
+    error_array = []
     @allow_array.each do |tweet|
       count += 1
-      #@client.destroy(tweet)
+      begin
+        @client.destroy_status(tweet)
+      rescue StandardError
+        # とりあえずエラーツイートをカウントするために配列に入れる。
+        error_array.push tweet
+      end
       progress(count)
     end
+    puts '削除処理が完了しました。'
+    puts "エラー: #{error_array.count}件"
   end
 
   def progress(count)
     percent = count / @allow_array.count.to_f * 100
     scale = 2
     bar = percent / scale
-    hide_bar = 100 /scale - bar.floor
+    hide_bar = 100 / scale - bar.floor
     print "\r#{count}件目 [#{'=' * bar}#{' ' * hide_bar}] #{percent.floor(1)}%完了"
     puts '' if count == @allow_array.count
   end
 
   def delete_tmp_dir
+    puts "#{@tmp_dir}を削除しています。"
     FileUtils.rm_r(@tmp_dir)
+    puts '削除を完了しました。'
   end
 
   def confirmation
-    STDERR.print '削除処理を実行しますか？(Y/N): '
+    STDERR.print '削除処理を実行する場合、「DELETE」と入力してください。: '
     responce = STDIN.gets.chomp
-    if responce != 'Y'
-      exit
-    end
+    exit if responce != 'DELETE'
   end
 
-  def main
-    if ARGV[0] == nil
-      zip_name = 'twitter.zip'
-    else
-      zip_name = ARGV[0]
-    end
+  def jobs
+    # 正直unzipの中で処理させたほうがいい気がするけど、めんどくさいのでここで。
+    zip_name = if ARGV[0].nil?
+                 'twitter.zip'
+               else
+                 ARGV[0]
+               end
     unzip(zip_name)
     make_json
     seach_tweet(load_json)
     confirmation
     delete_tweets
     delete_tmp_dir
-    pp @allow_array
   end
 end
-test = TweetDeleter.new
-test.main
+main = TweetDeleter.new
+main.jobs

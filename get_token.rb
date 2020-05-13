@@ -5,8 +5,8 @@ require 'yaml'
 
 config = YAML.load_file('./config.yml')
 
-ck = config['account']['API_Key']
-cs = config['account']['API_Secret_Key']
+ck = config['api']['API_Key']
+cs = config['api']['API_Secret_Key']
 
 consumer = OAuth::Consumer.new ck, cs, site: 'https://api.twitter.com'
 
