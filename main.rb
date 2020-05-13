@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+# TODO
+#  削除処理実際に動かないと思うのでそれの対処
+#  exe化
+
 require 'zip'
 require 'json'
 require 'fileutils'
@@ -28,11 +32,14 @@ class TweetDeleter
     puts '初期処理を完了しました。'
   end
 
-  def unzip(file = 'twitter.zip')
+  def unzip(file)
     puts "#{file}を展開しています。"
+    FileUtils.mkdir_p('./tmp/data')
     Zip::File.open(file) do |zip|
       zip.each do |entry|
-        zip.extract(entry, @tmp_dir + entry.name) { true }
+        if entry.name == 'data/tweet.js'
+          zip.extract(entry, @tmp_dir + entry.name) { true }
+        end
       end
     end
     puts '展開を完了しました。'
@@ -70,6 +77,10 @@ class TweetDeleter
         deny_pusher(tweet)
       elsif !@option['Fav'] == -1 && favorite > @option['Fav']
         deny_pusher(tweet)
+      elsif !@option['Until'].empty? && created_at < @until_time
+        deny_pusher(tweet)
+      elsif !@option['Since'].empty? && created_at > @since_time
+        deny_pusher(tweet)
       elsif !@option['Hashtag'].empty? && !hashtags.empty?
         hit = false
         hashtags.each do |hashtag|
@@ -82,10 +93,6 @@ class TweetDeleter
         else
           allow_pusher(tweet) # ここがおかしい。ハッシュタグ含んでいて条件に引っかからなかったら問答無用で消されるのはおかしい
         end
-      elsif !@option['Until'].empty? && created_at < @until_time
-        deny_pusher(tweet)
-      elsif !@option['Since'].empty? && created_at > @since_time
-        deny_pusher(tweet)
       else
         allow_pusher(tweet)
       end
@@ -126,10 +133,24 @@ class TweetDeleter
     FileUtils.rm_r(@tmp_dir)
   end
 
+  def confirmation
+    STDERR.print '削除処理を実行しますか？(Y/N): '
+    responce = STDIN.gets.chomp
+    if responce != 'Y'
+      exit
+    end
+  end
+
   def main
-    unzip
+    if ARGV[0] == nil
+      zip_name = 'twitter.zip'
+    else
+      zip_name = ARGV[0]
+    end
+    unzip(zip_name)
     make_json
     seach_tweet(load_json)
+    confirmation
     delete_tweets
     delete_tmp_dir
     pp @allow_array
