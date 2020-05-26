@@ -31,6 +31,8 @@ bundle install --deployment
 ```bash
 git clone git@github.com:JO3QMA/Twikeshi.git
 cd Twikeshi
+cp config.sample.yml config.yml
+nano config.yml # APIキーや条件を書き込んでください。
 ruby main.rb Twitter-*.zip
 ```
 APIキー取得スクリプト。
