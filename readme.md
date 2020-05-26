@@ -31,7 +31,7 @@ bundle install --deployment
 ```bash
 git clone git@github.com:JO3QMA/Twikeshi.git
 cd Twikeshi
-ruby main.rb
+ruby main.rb Twitter-*.zip
 ```
 APIキー取得スクリプト。
 ```bash
