@@ -54,7 +54,7 @@ PLATFORMS
 DEPENDENCIES
   fileutils
   oauth
-  rubyzip
+  rubyzip (~> 2.3.0)
   twitter
 
 BUNDLED WITH
