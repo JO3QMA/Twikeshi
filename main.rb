@@ -34,9 +34,7 @@ class TweetDeleter
     Zip::File.open(file) do |zip|
       zip.each do |entry|
         # 全部展開するよりも、必要なものを抽出するほうが実行時間が短い
-        if entry.name == 'data/tweet.js'
-          zip.extract(entry, @tmp_dir + entry.name) { true }
-        end
+        zip.extract(entry, @tmp_dir + entry.name) { true } if entry.name == 'data/tweet.js'
       end
     end
     puts '展開を完了しました。'
