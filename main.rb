@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'bundle'
 require 'zip'
 require 'json'
 require 'fileutils'
