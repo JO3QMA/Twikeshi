@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
+require 'rubygems'
 require 'zip'
 require 'json'
 require 'fileutils'
@@ -70,9 +71,9 @@ class TweetDeleter
       favorite = tweet['tweet']['favorite_count'].to_i
       hashtags = tweet['tweet']['entities']['hashtags']
       created_at = Date.parse(tweet['tweet']['created_at'])
-      if !@option['RT'] == -1 && retweet > @option['RT']
+      if @option['RT'] != -1 && retweet >= @option['RT']
         deny_pusher(tweet)
-      elsif !@option['Fav'] == -1 && favorite > @option['Fav']
+      elsif @option['Fav'] != -1 && favorite >= @option['Fav']
         deny_pusher(tweet)
       elsif !@option['Until'].empty? && created_at < @until_time
         deny_pusher(tweet)
